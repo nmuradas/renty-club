@@ -528,17 +528,17 @@ function DashboardContent() {
                                 <tbody className="bg-white divide-y divide-gray-200 text-black">{adminRegistrations.map(r => (<tr key={r.id} className="hover:bg-gray-50 text-black"><td className="px-6 py-4 font-bold text-black">{r.events?.title}</td><td className="px-6 py-4 text-black">{r.email}</td><td className="px-6 py-4 text-right"><button onClick={()=>handleDeleteRegistration(r.id)} className="text-red-400"><Trash2 size={16}/></button></td></tr>))}</tbody>
                             </table>
                         </div>
-                        <div className="overflow-hidden border border-gray-200 rounded-xl text-black text-black">
-                            <p className="p-4 bg-gray-50 border-b border-gray-200 font-bold text-xs uppercase text-gray-500 text-black text-black">Reservas Globales</p>
+                        <div className="overflow-hidden border border-gray-200 rounded-xl  text-black">
+                            <p className="p-4 bg-gray-50 border-b border-gray-200 font-bold text-xs uppercase   text-black">Reservas Globales</p>
                             <table className="w-full text-sm text-black">
-                                <thead className="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 text-black">
+                                <thead className="bg-gray-50 border-b border-gray-200 text-xs  text-black">
                                     <tr><th className="px-6 py-3 text-left">Propiedad</th><th className="px-6 py-3 text-left">Fechas</th><th className="px-6 py-3 text-left">Estado</th><th className="px-6 py-3 text-right">Acción</th></tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 text-black">
                                     {adminBookings.map(b => (
                                         <tr key={b.id} className="hover:bg-gray-50 transition text-black">
                                             <td className="px-6 py-4 font-bold text-black">{b.spaces?.title}</td>
-                                            <td className="px-6 py-4 text-gray-500 text-xs text-black">{b.start_date} - {b.end_date}</td>
+                                            <td className="px-6 py-4  text-xs text-black">{b.start_date} - {b.end_date}</td>
                                             <td className="px-6 py-4 uppercase font-bold text-xs text-black">{b.status}</td>
                                             <td className="px-6 py-4 text-right text-black">
                                                 {(b.status === 'rejected' || b.status === 'cancelled') && (<button onClick={()=>handleUpdateStatus(b.id, 'approved')} className="text-green-600 font-bold text-xs mr-4"><RotateCcw size={12} className="inline mr-1"/> Re-Aprobar</button>)}
@@ -565,21 +565,21 @@ function DashboardContent() {
                     <div><label className="text-xs font-bold text-gray-400 uppercase">Fecha</label><input type="date" className="w-full border border-gray-200 p-3 rounded-xl mt-1 text-black" value={editEventForm.date} onChange={e=>setEditEventForm({...editEventForm, date:e.target.value})}/></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 mb-4 text-black">
-                    <div><label className="text-xs font-bold text-gray-400 uppercase text-black">Categoría</label>
+                    <div><label className="text-xs font-bold uppercase text-black">Categoría</label>
                       <select className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl mt-1 text-black" value={editEventForm.category} onChange={e=>setEditEventForm({...editEventForm, category:e.target.value})}>
                         {EVENT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase text-black">Ubicación</label>
+                        <label className="text-xs font-bold  uppercase text-black">Ubicación</label>
                         <div className="flex gap-2 mt-1">
                             <input className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-black" value={editEventForm.location} onChange={e=>setEditEventForm({...editEventForm, location:e.target.value})}/>
                             <button onClick={handleEditEventSearch} className="bg-black text-white px-4 rounded-xl text-xs font-bold">Buscar</button>
                         </div>
                     </div>
                 </div>
-                <div className="mb-6"><label className="text-xs font-bold text-gray-400 uppercase text-black">Imagen URL</label><input className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl mt-1 text-black" value={editEventForm.image} onChange={e=>setEditEventForm({...editEventForm, image:e.target.value})}/></div>
-                <div className="mb-6"><label className="text-xs font-bold text-gray-400 uppercase text-black">Descripción</label><textarea className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl mt-1 text-black" rows="3" value={editEventForm.description} onChange={e=>setEditEventForm({...editEventForm, description:e.target.value})}/></div>
+                <div className="mb-6"><label className="text-xs font-bold  uppercase text-black">Imagen URL</label><input className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl mt-1 text-black" value={editEventForm.image} onChange={e=>setEditEventForm({...editEventForm, image:e.target.value})}/></div>
+                <div className="mb-6"><label className="text-xs font-bold  uppercase text-black">Descripción</label><textarea className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl mt-1 text-black" rows="3" value={editEventForm.description} onChange={e=>setEditEventForm({...editEventForm, description:e.target.value})}/></div>
                 <div className="h-48 border border-gray-200 rounded-xl mb-6 overflow-hidden"><DashboardMap lat={editEventForm.lat} lng={editEventForm.lng} /></div>
                 <div className="flex gap-3"><button onClick={()=>setShowEditEventModal(false)} className="flex-1 font-bold text-gray-500 py-3">Cancelar</button><button onClick={handleSaveEditEvent} className="flex-1 bg-black text-white rounded-xl font-bold py-3">Guardar Cambios</button></div>
             </div>
@@ -590,13 +590,13 @@ function DashboardContent() {
       {showEditModal && editForm && (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 text-black">
             <div className="bg-white p-8 rounded-3xl w-full max-w-2xl shadow-2xl overflow-y-auto" style={{ maxHeight: '90vh' }}>
-                <h3 className="text-xl font-bold mb-6 text-black text-black">Editar Propiedad</h3>
+                <h3 className="text-xl font-bold mb-6  text-black">Editar Propiedad</h3>
                 <div className="grid grid-cols-2 gap-4 mb-4 text-black">
-                    <div><label className="text-xs font-bold text-gray-400 uppercase text-black">Título</label><input className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.title} onChange={e=>setEditForm({...editForm, title:e.target.value})}/></div>
-                    <div><label className="text-xs font-bold text-gray-400 uppercase text-black">Precio</label><input type="number" className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.price} onChange={e=>setEditForm({...editForm, price:e.target.value})}/></div>
+                    <div><label className="text-xs font-bold  uppercase text-black">Título</label><input className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.title} onChange={e=>setEditForm({...editForm, title:e.target.value})}/></div>
+                    <div><label className="text-xs font-bold  uppercase text-black">Precio</label><input type="number" className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.price} onChange={e=>setEditForm({...editForm, price:e.target.value})}/></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 mb-4 text-black">
-                    <div><label className="text-xs font-bold text-gray-400 uppercase text-black">Tamaño (m²)</label><input type="number" className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.size || ''} onChange={e=>setEditForm({...editForm, size:e.target.value})}/></div>
+                    <div><label className="text-xs font-bold  uppercase text-black">Tamaño (m²)</label><input type="number" className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.size || ''} onChange={e=>setEditForm({...editForm, size:e.target.value})}/></div>
                     <div>
                         <label className="text-xs font-bold uppercase text-black">Ubicación</label>
                         <div className="flex gap-2 mt-1 text-black">
@@ -605,19 +605,19 @@ function DashboardContent() {
                         </div>
                     </div>
                 </div>
-                <div className="mb-6"><label className="text-xs font-bold text-gray-400 uppercase text-black">Imagen URL</label><input className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.image} onChange={e=>setEditForm({...editForm, image:e.target.value})}/></div>
-                <div className="mb-6 text-black"><label className="text-xs font-bold text-gray-400 uppercase mb-2 block text-black">Amenities</label><div className="grid grid-cols-3 gap-2">{AMENITIES_LIST.map(am => (<button key={am} onClick={()=>toggleAmenity(am)} className={`p-2 rounded-lg text-[10px] font-bold border ${editForm.amenities?.includes(am) ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200'}`}>{am}</button>))}</div></div>
+                <div className="mb-6"><label className="text-xs font-bold  uppercase text-black">Imagen URL</label><input className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.image} onChange={e=>setEditForm({...editForm, image:e.target.value})}/></div>
+                <div className="mb-6 text-black"><label className="text-xs font-bold  uppercase mb-2 block text-black">Amenities</label><div className="grid grid-cols-3 gap-2">{AMENITIES_LIST.map(am => (<button key={am} onClick={()=>toggleAmenity(am)} className={`p-2 rounded-lg text-[10px] font-bold border ${editForm.amenities?.includes(am) ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200'}`}>{am}</button>))}</div></div>
                 <div className="h-48 border rounded-xl mb-6 overflow-hidden text-black"><DashboardMap lat={editForm.lat} lng={editForm.lng} /></div>
-                <div className="flex gap-3 text-black"><button onClick={()=>setShowEditModal(false)} className="flex-1 font-bold text-gray-500 py-3 text-black">Cancelar</button><button onClick={handleSaveEdit} className="flex-1 bg-black text-white rounded-xl font-bold py-3">Guardar Cambios</button></div>
+                <div className="flex gap-3 text-black"><button onClick={()=>setShowEditModal(false)} className="flex-1 font-bold  py-3 text-black">Cancelar</button><button onClick={handleSaveEdit} className="flex-1 bg-black text-white rounded-xl font-bold py-3">Guardar Cambios</button></div>
             </div>
         </div>
       )}
 
       {/* MODAL NUEVO USUARIO */}
-      {showUserModal && (<div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 text-black"><div className="bg-white p-8 rounded-3xl w-full max-w-sm shadow-2xl text-black"><h3 className="font-bold text-xl mb-6 text-black">Nuevo Usuario</h3><input className="w-full border border-gray-200 p-4 rounded-2xl mb-4 text-black outline-none" placeholder="Email" onChange={e=>setNewUser({...newUser, email: e.target.value})}/><input className="w-full border border-gray-200 p-4 rounded-2xl mb-8 text-black outline-none" type="password" placeholder="Pass" onChange={e=>setNewUser({...newUser, password: e.target.value})}/><div className="flex gap-3 text-black"><button onClick={()=>setShowUserModal(false)} className="flex-1 font-bold text-gray-400 text-black">Cerrar</button><button onClick={handleCreateUser} className="flex-1 bg-black text-white rounded-2xl py-4 font-bold shadow-xl">Crear</button></div></div></div>)}
+      {showUserModal && (<div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 text-black"><div className="bg-white p-8 rounded-3xl w-full max-w-sm shadow-2xl text-black"><h3 className="font-bold text-xl mb-6 text-black">Nuevo Usuario</h3><input className="w-full border border-gray-200 p-4 rounded-2xl mb-4 text-black outline-none" placeholder="Email" onChange={e=>setNewUser({...newUser, email: e.target.value})}/><input className="w-full border border-gray-200 p-4 rounded-2xl mb-8 text-black outline-none" type="password" placeholder="Pass" onChange={e=>setNewUser({...newUser, password: e.target.value})}/><div className="flex gap-3 text-black"><button onClick={()=>setShowUserModal(false)} className="flex-1 font-bold  text-black">Cerrar</button><button onClick={handleCreateUser} className="flex-1 bg-black text-white rounded-2xl py-4 font-bold shadow-xl">Crear</button></div></div></div>)}
 
       {/* MODAL BLOQUEAR */}
-      {showBlockModal && (<div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 text-black"><div className="bg-white p-8 rounded-3xl w-full max-w-sm shadow-2xl text-black"><h3 className="font-bold text-xl mb-2 text-black">Bloquear Fechas</h3><p className="text-xs text-gray-500 mb-6 text-black">Elige el rango no disponible.</p><input type="date" className="w-full border border-gray-200 p-3 rounded-xl mb-2 text-black" onChange={e=>setBlockForm({...blockForm, startDate:e.target.value})}/><input type="date" className="w-full border border-gray-200 p-3 rounded-xl mb-6 text-black" onChange={e=>setBlockForm({...blockForm, endDate:e.target.value})}/><div className="flex gap-3 text-black"><button onClick={()=>setShowBlockModal(false)} className="flex-1 font-bold text-gray-400 text-black">Cancelar</button><button onClick={handleBlockDates} className="flex-1 bg-black text-white rounded-xl py-3 font-bold">Confirmar</button></div></div></div>)}
+      {showBlockModal && (<div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 text-black"><div className="bg-white p-8 rounded-3xl w-full max-w-sm shadow-2xl text-black"><h3 className="font-bold text-xl mb-2 text-black">Bloquear Fechas</h3><p className="text-xs  mb-6 text-black">Elige el rango no disponible.</p><input type="date" className="w-full border border-gray-200 p-3 rounded-xl mb-2 text-black" onChange={e=>setBlockForm({...blockForm, startDate:e.target.value})}/><input type="date" className="w-full border border-gray-200 p-3 rounded-xl mb-6 text-black" onChange={e=>setBlockForm({...blockForm, endDate:e.target.value})}/><div className="flex gap-3 text-black"><button onClick={()=>setShowBlockModal(false)} className="flex-1 font-bold  text-black">Cancelar</button><button onClick={handleBlockDates} className="flex-1 bg-black text-white rounded-xl py-3 font-bold">Confirmar</button></div></div></div>)}
     </div>
   )
 }

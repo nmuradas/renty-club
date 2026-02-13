@@ -1,7 +1,7 @@
 'use client'
 
+import React, { useState, useEffect, useRef, Suspense } from 'react'
 import MisDatos from '@/components/MisDatos'
-import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
@@ -16,7 +16,8 @@ import {
 
 const DashboardMap = dynamic(() => import('@/components/DashboardMap'), { ssr: false })
 
-export default function DashboardPage() {
+// 1. ESTE ES EL COMPONENTE QUE TIENE LA LÓGICA (ANTES SE LLAMABA DashboardPage)
+function DashboardContent() {
   const { user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -45,17 +46,17 @@ export default function DashboardPage() {
   const [activeThread, setActiveThread] = useState(null)
   const [chatInput, setChatInput] = useState('')
 
-  // Event State (NUEVO)
+  // Event State
   const [myEvents, setMyEvents] = useState([])
   const [eventRegistrations, setEventRegistrations] = useState([])
-  const [myInscriptions, setMyInscriptions] = useState([]) // NUEVO: Para ver a qué eventos me anoté
+  const [myInscriptions, setMyInscriptions] = useState([]) 
 
   // Admin State
   const [adminUsers, setAdminUsers] = useState([])
   const [adminSpaces, setAdminSpaces] = useState([])
   const [adminBookings, setAdminBookings] = useState([])
-  const [adminEvents, setAdminEvents] = useState([]) // NUEVO
-  const [adminRegistrations, setAdminRegistrations] = useState([]) // NUEVO
+  const [adminEvents, setAdminEvents] = useState([]) 
+  const [adminRegistrations, setAdminRegistrations] = useState([]) 
   const [adminStats, setAdminStats] = useState({ users: 0, spaces: 0, bookings: 0, events: 0 })
   
   // Modals
@@ -101,11 +102,11 @@ export default function DashboardPage() {
     const { data: rt } = await supabase.from('bookings').select('*, spaces(title, image, location)').eq('renter_id', user.id).neq('status', 'blocked').order('created_at', { ascending: false })
     setRentals(rt || [])
 
-    // NUEVO: Cargar eventos a los que YO me inscribí
+    // Cargar eventos a los que YO me inscribí
     const { data: myInsc } = await supabase.from('event_bookings').select('*, events(title, image, date, location)').eq('user_id', user.id)
     setMyInscriptions(myInsc || [])
 
-    // Eventos (NUEVO)
+    // Eventos
     const { data: evs } = await supabase.from('events').select('*').eq('organizer_id', user.id)
     setMyEvents(evs || [])
     
@@ -172,9 +173,8 @@ export default function DashboardPage() {
   const handleDeleteBlock = async (id) => { if(confirm("¿Liberar fechas?")) { await supabase.from('bookings').delete().eq('id', id); loadAllData() } }
   const handleDeleteUser = async (id) => { if(confirm("¿Eliminar usuario?")) { await supabase.from('profiles').delete().eq('id', id); loadAdminPanel() } }
   const handleChangeRole = async (id, role) => { if(confirm(`¿Cambiar rol a ${role}?`)) { await supabase.from('profiles').update({ role }).eq('id', id); loadAdminPanel() } }
-  
-  // FUNCIONES DE EVENTOS
   const handleDeleteRegistration = async (id) => { if(confirm("¿Eliminar este registro?")) { await supabase.from('event_bookings').delete().eq('id', id); loadAllData() } }
+  
   const handleSaveEditEvent = async () => {
     const { error } = await supabase.from('events').update({ 
         title: editEventForm.title, 
@@ -244,7 +244,7 @@ export default function DashboardPage() {
   return (
     <div className="flex bg-white text-black overflow-hidden" style={{ height: 'calc(100vh - 80px)' }}>
       
-      <aside className="w-64 bg-gray-50 border-r border-gray-200 hidden md:flex flex-col h-full shrink-0 z-20">
+      <aside className="w-64 bg-gray-50 border-r border-gray-200 hidden md:flex flex-col h-full shrink-0 z-20 text-black">
         <nav className="p-4 pt-8 space-y-1 flex-1 overflow-y-auto">
             <p className="px-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Menu Principal</p>
             <button onClick={() => setActiveTab('hosting')} className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${activeTab==='hosting' ? 'bg-white shadow-sm text-black border border-gray-200 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}><Store size={18}/> Mis Espacios</button>
@@ -265,7 +265,7 @@ export default function DashboardPage() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto p-6 md:p-12 relative bg-white">
+      <main className="flex-1 overflow-y-auto p-6 md:p-12 relative bg-white text-black">
         
         {activeTab === 'profile' && (
             <MisDatos user={user} profile={profile} refreshData={loadAllData} />
@@ -274,22 +274,22 @@ export default function DashboardPage() {
         {/* CONTENIDO MIS EVENTOS (DUEÑO) */}
         {activeTab === 'myevents' && (
           <div className="animate-fade-in-up space-y-12 text-black">
-             <div className="flex justify-between items-end mb-10">
-                <div><h1 className="text-3xl font-bold text-black">Tus Eventos</h1><p className="text-gray-500 text-sm mt-2">Gestiona las experiencias que organizas.</p></div>
-                <Link href="/events/create" className="bg-black text-white px-6 py-3 rounded-lg text-sm font-bold hover:bg-gray-800 transition shadow-lg flex items-center gap-2"><Plus size={16}/> Crear nuevo evento</Link>
+             <div className="flex justify-between items-end mb-10 text-black">
+                <div><h1 className="text-3xl font-bold">Tus Eventos</h1><p className="text-gray-500 text-sm mt-2">Gestiona las experiencias que organizas.</p></div>
+                <Link href="/events/create" className="bg-black text-white px-6 py-3 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2"><Plus size={16}/> Crear nuevo evento</Link>
             </div>
 
             <div className="space-y-10">
               <div>
-                <h3 className="font-bold text-lg mb-6 text-black">Eventos Activos</h3>
-                <div className="grid grid-cols-1 gap-4">
+                <h3 className="font-bold text-lg mb-6">Eventos Activos</h3>
+                <div className="grid grid-cols-1 gap-4 text-black">
                   {myEvents.length === 0 ? <p className="text-gray-400">No has creado eventos todavía.</p> : 
                     myEvents.map(e => (
                       <div key={e.id} className="bg-gray-50 p-5 border border-gray-200 rounded-2xl flex items-center justify-between">
                         <div className="flex items-center gap-4 text-black">
                           <img src={e.image} className="w-14 h-14 rounded-lg object-cover" />
-                          <div>
-                            <h4 className="font-bold text-black">{e.title}</h4>
+                          <div className="text-black">
+                            <h4 className="font-bold">{e.title}</h4>
                             <p className="text-xs text-gray-500">{e.date} • {e.location}</p>
                           </div>
                         </div>
@@ -305,7 +305,7 @@ export default function DashboardPage() {
 
               <div>
                 <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-black"><Users size={20}/> Registrados a mis eventos</h3>
-                <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+                <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden text-black">
                   <table className="w-full text-left text-sm text-black">
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
@@ -314,9 +314,9 @@ export default function DashboardPage() {
                         <th className="px-6 py-4 font-bold text-right">Acción</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-100 text-black">
                       {eventRegistrations.map(reg => (
-                        <tr key={reg.id}>
+                        <tr key={reg.id} className="hover:bg-gray-50 text-black">
                           <td className="px-6 py-4 font-bold">{reg.events?.title}</td>
                           <td className="px-6 py-4">{reg.email}</td>
                           <td className="px-6 py-4 text-right"><button onClick={()=>handleDeleteRegistration(reg.id)} className="text-red-400 hover:text-red-600 transition"><Trash2 size={16}/></button></td>
@@ -331,25 +331,25 @@ export default function DashboardPage() {
         )}
 
         {activeTab === 'hosting' && (
-            <div className="animate-fade-in-up space-y-10">
-                <div className="flex justify-between items-end mb-10">
-                    <div><h1 className="text-3xl font-bold text-black">Hola, {profile.full_name?.split(' ')[0] || 'Usuario'} 👋</h1><p className="text-gray-500 text-sm mt-2">Gestiona tus publicaciones.</p></div>
+            <div className="animate-fade-in-up space-y-10 text-black">
+                <div className="flex justify-between items-end mb-10 text-black">
+                    <div><h1 className="text-3xl font-bold">Hola, {profile.full_name?.split(' ')[0] || 'Usuario'} 👋</h1><p className="text-gray-500 text-sm mt-2">Gestiona tus publicaciones.</p></div>
                     <Link href="/create" className="bg-black text-white px-6 py-3 rounded-lg text-sm font-bold hover:bg-gray-800 transition shadow-lg flex items-center gap-2"><Plus size={16}/> Publicar nuevo espacio</Link>
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-                    <div className="bg-gray-50 p-6 border border-gray-200 shadow-sm flex flex-col justify-between h-32 rounded-2xl"><div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg mb-2"><Building size={20}/></div><div><p className="text-2xl font-bold text-black">{mySpaces.length}</p><p className="text-xs text-gray-400 font-medium">Espacios activos</p></div></div>
-                    <div className="bg-gray-50 p-6 border border-gray-200 shadow-sm flex flex-col justify-between h-32 rounded-2xl"><div className="w-10 h-10 bg-green-50 text-green-600 rounded-lg flex items-center justify-center text-lg mb-2"><DollarSign size={20}/></div><div><p className="text-2xl font-bold text-black">$0</p><p className="text-xs text-gray-400 font-medium">Ingresos totales</p></div></div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-12 text-black">
+                    <div className="bg-gray-50 p-6 border border-gray-200 shadow-sm flex flex-col justify-between h-32 rounded-2xl text-black"><div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-lg mb-2"><Building size={20}/></div><div><p className="text-2xl font-bold">{mySpaces.length}</p><p className="text-xs text-gray-400 font-medium uppercase">Espacios activos</p></div></div>
+                    <div className="bg-gray-50 p-6 border border-gray-200 shadow-sm flex flex-col justify-between h-32 rounded-2xl text-black"><div className="w-10 h-10 bg-green-50 text-green-600 rounded-lg flex items-center justify-center text-lg mb-2"><DollarSign size={20}/></div><div><p className="text-2xl font-bold text-black">$0</p><p className="text-xs text-gray-400 font-medium">Ingresos totales</p></div></div>
                     <div className="bg-gray-50 p-6 border border-gray-200 shadow-sm flex flex-col justify-between h-32 rounded-2xl"><div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center text-lg mb-2"><Eye size={20}/></div><div><p className="text-2xl font-bold text-black">0</p><p className="text-xs text-gray-400 font-medium">Vistas totales</p></div></div>
-                    <div className="bg-gray-50 p-6 border border-gray-200 shadow-sm flex flex-col justify-between h-32 rounded-2xl"><div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center text-lg mb-2"><Calendar size={20}/></div><div><p className="text-2xl font-bold text-black">{pendingRequestsCount}</p><p className="text-xs text-gray-400 font-medium">Solicitudes pendientes</p></div></div>
+                    <div className="bg-gray-50 p-6 border border-gray-200 shadow-sm flex flex-col justify-between h-32 rounded-2xl text-black"><div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center text-lg mb-2"><Calendar size={20}/></div><div><p className="text-2xl font-bold">{pendingRequestsCount}</p><p className="text-xs text-gray-400 font-medium uppercase">Pendientes</p></div></div>
                 </div>
-                <div className="space-y-12">
+                <div className="space-y-12 text-black">
                     <div>
-                        <h3 className="font-bold text-lg mb-6">Solicitudes Recientes</h3>
+                        <h3 className="font-bold text-lg mb-6 text-black">Solicitudes Recientes</h3>
                         <div className="space-y-4 text-black">
                             {requests.length === 0 ? <div className="bg-gray-50 p-8 border border-gray-200 text-center rounded-2xl"><MessageSquare className="text-3xl text-gray-300 mx-auto mb-3"/><p className="text-sm text-gray-500 font-medium">No tienes solicitudes pendientes.</p></div> : 
                                 requests.map(r => (
                                     <div key={r.id} className="bg-gray-50 p-5 border border-gray-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4 rounded-2xl text-black">
-                                        <div className="flex items-center gap-4 text-black"><img src={r.spaces?.image} className="w-14 h-14 rounded-lg object-cover bg-gray-100 border border-gray-200" /><div className="text-black"><div className="flex items-center gap-2 mb-1"><h4 className="font-bold text-sm text-black">{r.spaces?.title}</h4><span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${r.status==='pending'?'bg-yellow-100 text-yellow-800':(r.status==='approved'?'bg-green-100 text-green-800':'bg-red-100 text-red-800')}`}>{r.status}</span></div><p className="text-xs text-gray-500 font-medium flex items-center gap-1"><Calendar size={12}/> {r.start_date} — {r.end_date}</p></div></div>
+                                        <div className="flex items-center gap-4 text-black"><img src={r.spaces?.image} className="w-14 h-14 rounded-lg object-cover bg-gray-100" /><div><div className="flex items-center gap-2 mb-1"><h4 className="font-bold text-sm">{r.spaces?.title}</h4><span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-yellow-100 text-yellow-800">{r.status}</span></div><p className="text-xs text-gray-500 font-medium flex items-center gap-1"><Calendar size={12}/> {r.start_date} — {r.end_date}</p></div></div>
                                         <div className="flex gap-2">
                                             {r.status === 'pending' && (<><button onClick={()=>handleUpdateStatus(r.id, 'approved')} className="bg-black text-white px-4 py-2 rounded-lg text-xs font-bold hover:scale-105 transition">Aprobar</button><button onClick={()=>handleUpdateStatus(r.id, 'rejected')} className="border border-gray-200 text-gray-600 px-4 py-2 rounded-lg text-xs font-bold hover:bg-gray-50 transition">Rechazar</button></>)}
                                             {r.status === 'approved' && (<button onClick={()=>handleUpdateStatus(r.id, 'cancelled')} className="text-red-500 text-xs font-bold hover:underline">Cancelar</button>)}
@@ -397,11 +397,11 @@ export default function DashboardPage() {
             </div>
         )}
 
+        {/* MIS RESERVAS (MODIFICADO PARA MOSTRAR EVENTOS DEL USUARIO) */}
         {activeTab === 'rentals' && (
             <div className="animate-fade-in-up space-y-12 text-black">
                 <h1 className="text-3xl font-bold mb-8">Mis reservas</h1>
                 
-                {/* SECCIÓN ESPACIOS */}
                 <div>
                   <h3 className="font-bold text-lg mb-6">Espacios</h3>
                   <div className="space-y-4 max-w-4xl text-black">
@@ -420,7 +420,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* NUEVA SECCIÓN: EVENTOS A LOS QUE ME ANOTÉ */}
                 <div>
                   <h3 className="font-bold text-lg mb-6">Eventos a los que asistiré</h3>
                   <div className="space-y-4 max-w-4xl text-black">
@@ -435,14 +434,14 @@ export default function DashboardPage() {
                               </div>
                           </div>
                       ))}
-                      {myInscriptions.length === 0 && <p className="text-gray-400 text-sm">No te has registrado a ningún evento todavía.</p>}
+                      {myInscriptions.length === 0 && <p className="text-gray-400 text-sm">No te has anotado en ningún evento todavía.</p>}
                   </div>
                 </div>
             </div>
         )}
 
         {activeTab === 'messages' && (
-            <div className="grid grid-cols-12 bg-white border border-gray-200 shadow-sm overflow-hidden rounded-2xl" style={{ height: 'calc(100vh - 160px)' }}>
+            <div className="grid grid-cols-12 bg-white border border-gray-200 shadow-sm overflow-hidden rounded-2xl text-black" style={{ height: 'calc(100vh - 160px)' }}>
                 <div className="col-span-4 border-r border-gray-200 flex flex-col h-full overflow-hidden">
                     <div className="p-4 border-b border-gray-200 shrink-0 bg-gray-50"><h2 className="font-bold text-lg mb-2 text-black">Mensajes</h2><input className="w-full bg-white border border-gray-200 rounded-lg py-2 px-3 text-xs outline-none" placeholder="Buscar..."/></div>
                     <div className="flex-1 overflow-y-auto p-2">
@@ -529,17 +528,17 @@ export default function DashboardPage() {
                                 <tbody className="bg-white divide-y divide-gray-200 text-black">{adminRegistrations.map(r => (<tr key={r.id} className="hover:bg-gray-50 text-black"><td className="px-6 py-4 font-bold text-black">{r.events?.title}</td><td className="px-6 py-4 text-black">{r.email}</td><td className="px-6 py-4 text-right"><button onClick={()=>handleDeleteRegistration(r.id)} className="text-red-400"><Trash2 size={16}/></button></td></tr>))}</tbody>
                             </table>
                         </div>
-                        <div className="overflow-hidden border border-gray-200 rounded-xl text-black ">
-                            <p className="p-4 bg-gray-50 border-b border-gray-200 font-bold text-xs uppercase  text-black">Reservas Globales</p>
+                        <div className="overflow-hidden border border-gray-200 rounded-xl text-black text-black">
+                            <p className="p-4 bg-gray-50 border-b border-gray-200 font-bold text-xs uppercase text-gray-500 text-black text-black">Reservas Globales</p>
                             <table className="w-full text-sm text-black">
-                                <thead className="bg-gray-50 border-b border-gray-200 text-xs  text-black">
+                                <thead className="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 text-black">
                                     <tr><th className="px-6 py-3 text-left">Propiedad</th><th className="px-6 py-3 text-left">Fechas</th><th className="px-6 py-3 text-left">Estado</th><th className="px-6 py-3 text-right">Acción</th></tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200 text-black">
                                     {adminBookings.map(b => (
                                         <tr key={b.id} className="hover:bg-gray-50 transition text-black">
                                             <td className="px-6 py-4 font-bold text-black">{b.spaces?.title}</td>
-                                            <td className="px-6 py-4  text-xs text-black">{b.start_date} - {b.end_date}</td>
+                                            <td className="px-6 py-4 text-gray-500 text-xs text-black">{b.start_date} - {b.end_date}</td>
                                             <td className="px-6 py-4 uppercase font-bold text-xs text-black">{b.status}</td>
                                             <td className="px-6 py-4 text-right text-black">
                                                 {(b.status === 'rejected' || b.status === 'cancelled') && (<button onClick={()=>handleUpdateStatus(b.id, 'approved')} className="text-green-600 font-bold text-xs mr-4"><RotateCcw size={12} className="inline mr-1"/> Re-Aprobar</button>)}
@@ -558,31 +557,31 @@ export default function DashboardPage() {
 
       {/* MODAL EDITAR EVENTO */}
       {showEditEventModal && editEventForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4  text-black">
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
             <div className="bg-white p-8 rounded-3xl w-full max-w-2xl shadow-2xl overflow-y-auto text-black" style={{ maxHeight: '90vh' }}>
                 <h3 className="text-xl font-bold mb-6 text-black">Editar Evento</h3>
                 <div className="grid grid-cols-2 gap-4 mb-4 text-black">
-                    <div><label className="text-xs font-bold text-gray-400 uppercase">Título</label><input className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl mt-1 text-black" value={editEventForm.title} onChange={e=>setEditEventForm({...editEventForm, title:e.target.value})}/></div>
-                    <div><label className="text-xs font-bold text-gray-400 uppercase">Fecha</label><input type="date" className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl mt-1 text-black" value={editEventForm.date} onChange={e=>setEditEventForm({...editEventForm, date:e.target.value})}/></div>
+                    <div><label className="text-xs font-bold text-gray-400 uppercase">Título</label><input className="w-full border border-gray-200 p-3 rounded-xl mt-1 text-black" value={editEventForm.title} onChange={e=>setEditEventForm({...editEventForm, title:e.target.value})}/></div>
+                    <div><label className="text-xs font-bold text-gray-400 uppercase">Fecha</label><input type="date" className="w-full border border-gray-200 p-3 rounded-xl mt-1 text-black" value={editEventForm.date} onChange={e=>setEditEventForm({...editEventForm, date:e.target.value})}/></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 mb-4 text-black">
-                    <div><label className="text-xs font-bold  uppercase text-black">Categoría</label>
+                    <div><label className="text-xs font-bold text-gray-400 uppercase text-black">Categoría</label>
                       <select className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl mt-1 text-black" value={editEventForm.category} onChange={e=>setEditEventForm({...editEventForm, category:e.target.value})}>
                         {EVENT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
                     <div>
-                        <label className="text-xs font-bold  uppercase text-black">Ubicación</label>
+                        <label className="text-xs font-bold text-gray-400 uppercase text-black">Ubicación</label>
                         <div className="flex gap-2 mt-1">
                             <input className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-black" value={editEventForm.location} onChange={e=>setEditEventForm({...editEventForm, location:e.target.value})}/>
                             <button onClick={handleEditEventSearch} className="bg-black text-white px-4 rounded-xl text-xs font-bold">Buscar</button>
                         </div>
                     </div>
                 </div>
-                <div className="mb-6"><label className="text-xs font-bold  uppercase text-black">Imagen URL</label><input className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl mt-1 text-black" value={editEventForm.image} onChange={e=>setEditEventForm({...editEventForm, image:e.target.value})}/></div>
-                <div className="mb-6"><label className="text-xs font-bold  uppercase text-black">Descripción</label><textarea className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl mt-1 text-black" rows="3" value={editEventForm.description} onChange={e=>setEditEventForm({...editEventForm, description:e.target.value})}/></div>
+                <div className="mb-6"><label className="text-xs font-bold text-gray-400 uppercase text-black">Imagen URL</label><input className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl mt-1 text-black" value={editEventForm.image} onChange={e=>setEditEventForm({...editEventForm, image:e.target.value})}/></div>
+                <div className="mb-6"><label className="text-xs font-bold text-gray-400 uppercase text-black">Descripción</label><textarea className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl mt-1 text-black" rows="3" value={editEventForm.description} onChange={e=>setEditEventForm({...editEventForm, description:e.target.value})}/></div>
                 <div className="h-48 border border-gray-200 rounded-xl mb-6 overflow-hidden"><DashboardMap lat={editEventForm.lat} lng={editEventForm.lng} /></div>
-                <div className="flex gap-3"><button onClick={()=>setShowEditEventModal(false)} className="flex-1 font-bold text-gray-500 py-3">Cancelar</button><button onClick={handleSaveEditEvent} className="flex-1 bg-black  rounded-xl font-bold py-3 text-white">Guardar Cambios</button></div>
+                <div className="flex gap-3"><button onClick={()=>setShowEditEventModal(false)} className="flex-1 font-bold text-gray-500 py-3">Cancelar</button><button onClick={handleSaveEditEvent} className="flex-1 bg-black text-white rounded-xl font-bold py-3">Guardar Cambios</button></div>
             </div>
         </div>
       )}
@@ -591,13 +590,13 @@ export default function DashboardPage() {
       {showEditModal && editForm && (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 text-black">
             <div className="bg-white p-8 rounded-3xl w-full max-w-2xl shadow-2xl overflow-y-auto" style={{ maxHeight: '90vh' }}>
-                <h3 className="text-xl font-bold mb-6 text-black">Editar Propiedad</h3>
+                <h3 className="text-xl font-bold mb-6 text-black text-black">Editar Propiedad</h3>
                 <div className="grid grid-cols-2 gap-4 mb-4 text-black">
-                    <div><label className="text-xs font-bold t0 uppercase text-black">Título</label><input className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.title} onChange={e=>setEditForm({...editForm, title:e.target.value})}/></div>
-                    <div><label className="text-xs font-bold uppercase text-black">Precio</label><input type="number" className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.price} onChange={e=>setEditForm({...editForm, price:e.target.value})}/></div>
+                    <div><label className="text-xs font-bold text-gray-400 uppercase text-black">Título</label><input className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.title} onChange={e=>setEditForm({...editForm, title:e.target.value})}/></div>
+                    <div><label className="text-xs font-bold text-gray-400 uppercase text-black">Precio</label><input type="number" className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.price} onChange={e=>setEditForm({...editForm, price:e.target.value})}/></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 mb-4 text-black">
-                    <div><label className="text-xs font-bold uppercase text-black">Tamaño (m²)</label><input type="number" className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.size || ''} onChange={e=>setEditForm({...editForm, size:e.target.value})}/></div>
+                    <div><label className="text-xs font-bold text-gray-400 uppercase text-black">Tamaño (m²)</label><input type="number" className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.size || ''} onChange={e=>setEditForm({...editForm, size:e.target.value})}/></div>
                     <div>
                         <label className="text-xs font-bold uppercase text-black">Ubicación</label>
                         <div className="flex gap-2 mt-1 text-black">
@@ -606,19 +605,28 @@ export default function DashboardPage() {
                         </div>
                     </div>
                 </div>
-                <div className="mb-6"><label className="text-xs font-bold uppercase text-black">Imagen URL</label><input className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.image} onChange={e=>setEditForm({...editForm, image:e.target.value})}/></div>
-                <div className="mb-6 text-black"><label className="text-xs font-bold uppercase mb-2 block text-black">Amenities</label><div className="grid grid-cols-3 gap-2">{AMENITIES_LIST.map(am => (<button key={am} onClick={()=>toggleAmenity(am)} className={`p-2 rounded-lg text-[10px] font-bold border ${editForm.amenities?.includes(am) ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200'}`}>{am}</button>))}</div></div>
+                <div className="mb-6"><label className="text-xs font-bold text-gray-400 uppercase text-black">Imagen URL</label><input className="w-full bg-gray-50 border p-3 rounded-xl mt-1 text-black" value={editForm.image} onChange={e=>setEditForm({...editForm, image:e.target.value})}/></div>
+                <div className="mb-6 text-black"><label className="text-xs font-bold text-gray-400 uppercase mb-2 block text-black">Amenities</label><div className="grid grid-cols-3 gap-2">{AMENITIES_LIST.map(am => (<button key={am} onClick={()=>toggleAmenity(am)} className={`p-2 rounded-lg text-[10px] font-bold border ${editForm.amenities?.includes(am) ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200'}`}>{am}</button>))}</div></div>
                 <div className="h-48 border rounded-xl mb-6 overflow-hidden text-black"><DashboardMap lat={editForm.lat} lng={editForm.lng} /></div>
-                <div className="flex gap-3 text-black"><button onClick={()=>setShowEditModal(false)} className="flex-1 font-bold  py-3 ">Cancelar</button><button onClick={handleSaveEdit} className="flex-1 bg-black  rounded-xl font-bold py-3 text-white">Guardar Cambios</button></div>
+                <div className="flex gap-3 text-black"><button onClick={()=>setShowEditModal(false)} className="flex-1 font-bold text-gray-500 py-3 text-black">Cancelar</button><button onClick={handleSaveEdit} className="flex-1 bg-black text-white rounded-xl font-bold py-3">Guardar Cambios</button></div>
             </div>
         </div>
       )}
 
       {/* MODAL NUEVO USUARIO */}
-      {showUserModal && (<div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 text-black"><div className="bg-white p-8 rounded-3xl w-full max-w-sm shadow-2xl text-black"><h3 className="font-bold text-xl mb-6 text-black">Nuevo Usuario</h3><input className="w-full border border-gray-200 p-4 rounded-2xl mb-4 text-black outline-none" placeholder="Email" onChange={e=>setNewUser({...newUser, email: e.target.value})}/><input className="w-full border border-gray-200 p-4 rounded-2xl mb-8 text-black outline-none" type="password" placeholder="Pass" onChange={e=>setNewUser({...newUser, password: e.target.value})}/><div className="flex gap-3 text-black"><button onClick={()=>setShowUserModal(false)} className="flex-1 font-bold  text-black">Cerrar</button><button onClick={handleCreateUser} className="flex-1 bg-black text-white rounded-2xl py-4 font-bold shadow-xl">Crear</button></div></div></div>)}
+      {showUserModal && (<div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 text-black"><div className="bg-white p-8 rounded-3xl w-full max-w-sm shadow-2xl text-black"><h3 className="font-bold text-xl mb-6 text-black">Nuevo Usuario</h3><input className="w-full border border-gray-200 p-4 rounded-2xl mb-4 text-black outline-none" placeholder="Email" onChange={e=>setNewUser({...newUser, email: e.target.value})}/><input className="w-full border border-gray-200 p-4 rounded-2xl mb-8 text-black outline-none" type="password" placeholder="Pass" onChange={e=>setNewUser({...newUser, password: e.target.value})}/><div className="flex gap-3 text-black"><button onClick={()=>setShowUserModal(false)} className="flex-1 font-bold text-gray-400 text-black">Cerrar</button><button onClick={handleCreateUser} className="flex-1 bg-black text-white rounded-2xl py-4 font-bold shadow-xl">Crear</button></div></div></div>)}
 
       {/* MODAL BLOQUEAR */}
-      {showBlockModal && (<div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 text-black"><div className="bg-white p-8 rounded-3xl w-full max-w-sm shadow-2xl text-black"><h3 className="font-bold text-xl mb-2 text-black">Bloquear Fechas</h3><p className="text-xs  mb-6 text-black">Elige el rango no disponible.</p><input type="date" className="w-full border border-gray-200 p-3 rounded-xl mb-2 text-black" onChange={e=>setBlockForm({...blockForm, startDate:e.target.value})}/><input type="date" className="w-full border border-gray-200 p-3 rounded-xl mb-6 text-black" onChange={e=>setBlockForm({...blockForm, endDate:e.target.value})}/><div className="flex gap-3 text-black"><button onClick={()=>setShowBlockModal(false)} className="flex-1 font-bold  text-black">Cancelar</button><button onClick={handleBlockDates} className="flex-1 bg-black text-white rounded-xl py-3 font-bold">Confirmar</button></div></div></div>)}
+      {showBlockModal && (<div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 text-black"><div className="bg-white p-8 rounded-3xl w-full max-w-sm shadow-2xl text-black"><h3 className="font-bold text-xl mb-2 text-black">Bloquear Fechas</h3><p className="text-xs text-gray-500 mb-6 text-black">Elige el rango no disponible.</p><input type="date" className="w-full border border-gray-200 p-3 rounded-xl mb-2 text-black" onChange={e=>setBlockForm({...blockForm, startDate:e.target.value})}/><input type="date" className="w-full border border-gray-200 p-3 rounded-xl mb-6 text-black" onChange={e=>setBlockForm({...blockForm, endDate:e.target.value})}/><div className="flex gap-3 text-black"><button onClick={()=>setShowBlockModal(false)} className="flex-1 font-bold text-gray-400 text-black">Cancelar</button><button onClick={handleBlockDates} className="flex-1 bg-black text-white rounded-xl py-3 font-bold">Confirmar</button></div></div></div>)}
     </div>
+  )
+}
+
+// 2. ESTE ES EL ENVOLTORIO QUE NECESITA NEXT.JS (Y VERCEL)
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="h-screen flex items-center justify-center font-bold text-black">Cargando dashboard...</div>}>
+      <DashboardContent />
+    </Suspense>
   )
 }

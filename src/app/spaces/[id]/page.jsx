@@ -19,7 +19,7 @@ import { Spanish } from 'flatpickr/dist/l10n/es.js'
 
 const DashboardMap = dynamic(() => import('@/components/DashboardMap'), { 
   ssr: false,
-  loading: () => <div className="w-full bg-gray-100 animate-pulse rounded-[24px]" style={{ height: '350px' }}></div>
+  loading: () => <div className="w-full bg-gray-100 animate-pulse rounded-3xl" style={{ height: '350px' }}></div>
 })
 
 const AMENITY_ICONS = {
@@ -88,8 +88,9 @@ export default function SpaceDetailsPage() {
     if (days <= 0) return null
     const subtotal = days * space.price
     const discount = days >= 28 ? subtotal * 0.30 : days >= 7 ? subtotal * 0.15 : 0
+    const discountLabel = days >= 28 ? "Descuento mensual (30%)" : "Descuento semanal (15%)"
     const platformFee = (subtotal - discount) * 0.10
-    return { days, subtotal, discount, platformFee, total: (subtotal - discount) + platformFee }
+    return { days, subtotal, discount, discountLabel, platformFee, total: (subtotal - discount) + platformFee }
   }, [bookingDates, space])
 
   const handleBooking = async () => {
@@ -100,7 +101,7 @@ export default function SpaceDetailsPage() {
         start_date: bookingDates.start, end_date: bookingDates.end,
         total_price: billing.total, status: 'pending'
     })
-    if (!error) { alert('¡Solicitud enviada! Avisaremos al dueño.'); router.push('/dashboard?tab=rentals') }
+    if (!error) { alert('¡Solicitud enviada!'); router.push('/dashboard?tab=rentals') }
     setBookingLoading(false)
   }
 
@@ -115,7 +116,6 @@ export default function SpaceDetailsPage() {
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-black" size={40}/></div>
   if (!space) return null
 
-  // Lógica de Galería SIN REPETICIÓN
   let gallery = []
   if (space.image) gallery.push(space.image)
   if (space.images && Array.isArray(space.images)) {
@@ -126,7 +126,7 @@ export default function SpaceDetailsPage() {
 
   return (
     <div className="bg-gray-50 min-h-screen text-black pb-20">
-      <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-xl z-50 border-b border-gray-100 h-20 flex items-center px-6 justify-between">
+      <nav className="fixed top-0 w-full bg-white bg-opacity-80 backdrop-blur-xl z-50 border-b border-gray-100 h-20 flex items-center px-6 justify-between">
         <button onClick={() => router.back()} className="flex items-center gap-2 font-bold hover:bg-gray-100 px-4 py-2 rounded-full transition text-black"><ArrowLeft size={20} /> Volver</button>
         <div className="flex gap-4">
             <button className="p-2 hover:bg-gray-100 rounded-full transition"><Share2 size={20}/></button>
@@ -153,8 +153,7 @@ export default function SpaceDetailsPage() {
             </div>
         </div>
         
-        {/* GALERÍA DINÁMICA MEJORADA */}
-        <div className="rounded-[40px] overflow-hidden mb-16 relative shadow-2xl border-8 border-white bg-white" style={{ height: '550px' }}>
+        <div className="overflow-hidden mb-16 relative shadow-2xl border-8 border-white bg-white" style={{ height: '550px', borderRadius: '40px' }}>
             {gallery.length === 1 ? (
                 <img src={gallery[0]} className="w-full h-full object-cover" />
             ) : gallery.length === 2 ? (
@@ -170,7 +169,7 @@ export default function SpaceDetailsPage() {
                     <div className="col-span-1 row-span-1"><img src={gallery[3] || gallery[0]} className="w-full h-full object-cover" /></div>
                     <div className="col-span-1 row-span-1 relative">
                         <img src={gallery[4] || gallery[0]} className="w-full h-full object-cover" />
-                        {gallery.length > 5 && <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white font-bold cursor-pointer">+{gallery.length - 5} fotos</div>}
+                        {gallery.length > 5 && <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center text-white font-bold cursor-pointer">+{gallery.length - 5} fotos</div>}
                     </div>
                 </div>
             )}
@@ -196,38 +195,38 @@ export default function SpaceDetailsPage() {
                 </div>
 
                 <div className="space-y-6">
-                    <h3 className="text-2xl font-serif font-bold flex items-center gap-3 underline decoration-gray-200 underline-offset-8">Descripción</h3>
+                    <h3 className="text-2xl font-serif font-bold flex items-center gap-3 underline underline-offset-8">Descripción</h3>
                     <p className="text-gray-600 leading-relaxed text-lg whitespace-pre-wrap">{space.description}</p>
                 </div>
 
                 <div className="space-y-8">
-                    <h3 className="text-2xl font-serif font-bold flex items-center gap-3 underline decoration-gray-200 underline-offset-8">Amenities</h3>
+                    <h3 className="text-2xl font-serif font-bold flex items-center gap-3 underline underline-offset-8">Amenities</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         {(space.amenities || []).map(am => <AmenityItem key={am} name={am} />)}
                     </div>
                 </div>
 
                 <div className="space-y-8">
-                    <h3 className="text-2xl font-serif font-bold flex items-center gap-3 underline decoration-gray-200 underline-offset-8">Ubicación exacta</h3>
-                    <div className="w-full rounded-[32px] overflow-hidden border-8 border-white shadow-2xl h-[400px]">
+                    <h3 className="text-2xl font-serif font-bold flex items-center gap-3 underline underline-offset-8">Ubicación exacta</h3>
+                    <p className="text-gray-500 font-bold mb-2 flex items-center gap-2 text-sm"><MapPin size={16}/> {space.location}</p>
+                    <div className="w-full overflow-hidden border-8 border-white shadow-2xl" style={{ height: '400px', borderRadius: '32px' }}>
                         <DashboardMap lat={space.lat} lng={space.lng} interactive={false} />
                     </div>
                 </div>
 
-                {/* RESEÑAS CON ONDA */}
                 <div className="space-y-10 pt-10 border-t border-gray-100">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-2xl font-serif font-bold flex items-center gap-3 underline decoration-gray-200 underline-offset-8"><Star fill="black" size={24}/> 4.96 · 12 Reseñas</h3>
+                        <h3 className="text-2xl font-serif font-bold flex items-center gap-3 underline underline-offset-8"><Star fill="black" size={24}/> 4.96 · 12 Reseñas</h3>
                         <button className="text-sm font-bold underline">Ver todas</button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {[
-                            { name: "Marcos Galperin", date: "Hace 2 semanas", text: "Excelente luz natural para fotos. Muy recomendado.", color: "bg-blue-500" },
-                            { name: "Lucía P.", date: "Hace 1 mes", text: "El anfitrión fue muy amable y el espacio estaba impecable.", color: "bg-purple-500" }
+                            { name: "Carlos R.", date: "Hace 2 semanas", text: "Excelente luz natural para fotos. Muy recomendado.", color: "bg-blue-100 text-blue-600" },
+                            { name: "Sofía M.", date: "Hace 1 mes", text: "El anfitrión fue muy amable y el espacio estaba impecable.", color: "bg-pink-100 text-pink-600" }
                         ].map((rev, i) => (
-                            <div key={i} className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-sm hover:shadow-xl transition-shadow duration-300">
+                            <div key={i} className="bg-white p-8 border border-gray-100 shadow-sm hover:shadow-xl transition-shadow duration-300" style={{ borderRadius: '32px' }}>
                                 <div className="flex items-center gap-4 mb-4">
-                                    <div className={`w-12 h-12 ${rev.color} rounded-full flex items-center justify-center text-white font-bold shadow-inner`}>{rev.name[0]}</div>
+                                    <div className={`w-12 h-12 ${rev.color} rounded-full flex items-center justify-center font-bold shadow-inner text-xl font-serif italic`}>{rev.name[0]}</div>
                                     <div><p className="font-bold text-black">{rev.name}</p><p className="text-xs text-gray-400 font-bold uppercase">{rev.date}</p></div>
                                 </div>
                                 <div className="flex text-yellow-400 mb-3"><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/></div>
@@ -238,9 +237,8 @@ export default function SpaceDetailsPage() {
                 </div>
             </div>
 
-            {/* CARD RESERVA PRO */}
             <div className="relative">
-                <div className="sticky top-28 bg-white border border-gray-100 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] rounded-[40px] p-8 text-black">
+                <div className="sticky top-28 bg-white border border-gray-100 shadow-2xl p-8 text-black" style={{ borderRadius: '40px' }}>
                     <div className="flex justify-between items-center mb-8">
                       <div>
                         <p className="text-3xl font-serif font-bold">${space.price}</p>
@@ -253,29 +251,29 @@ export default function SpaceDetailsPage() {
                     
                     <div className="grid grid-cols-2 border-2 border-gray-50 rounded-3xl mb-6 overflow-hidden bg-gray-50">
                         <div className="p-4 border-r border-white hover:bg-white transition-all cursor-pointer">
-                            <label className="text-[10px] font-bold text-gray-400 block uppercase mb-1">Entrada</label>
+                            <label className="text-xs font-bold text-gray-400 block uppercase mb-1" style={{ fontSize: '10px' }}>Entrada</label>
                             <input id="checkin-picker" placeholder="Añadir" className="w-full text-sm font-bold outline-none bg-transparent" readOnly />
                         </div>
                         <div className="p-4 hover:bg-white transition-all cursor-pointer">
-                            <label className="text-[10px] font-bold text-gray-400 block uppercase mb-1">Salida</label>
+                            <label className="text-xs font-bold text-gray-400 block uppercase mb-1" style={{ fontSize: '10px' }}>Salida</label>
                             <input id="checkout-picker" placeholder="Añadir" className="w-full text-sm font-bold outline-none bg-transparent" readOnly />
                         </div>
                     </div>
 
                     {billing ? (
-                        <div className="space-y-4 mb-8 bg-gray-50 p-6 rounded-3xl animate-in fade-in duration-500">
+                        <div className="space-y-4 mb-8 bg-gray-50 p-6 rounded-3xl">
                             <div className="flex justify-between text-sm font-medium">
-                                <span className="text-gray-500 underline decoration-dotted underline-offset-4">${space.price} x {billing.days} días</span>
+                                <span className="text-gray-500 underline underline-offset-4 decoration-dotted">${space.price} x {billing.days} días</span>
                                 <span className="font-bold">${billing.subtotal}</span>
                             </div>
                             {billing.discount > 0 && (
-                                <div className="flex justify-between text-sm text-green-600 font-bold bg-green-100/50 px-3 py-2 rounded-xl border border-green-100">
+                                <div className="flex justify-between text-sm text-green-600 font-bold bg-green-50 px-3 py-2 rounded-xl border border-green-100">
                                     <span className="flex items-center gap-1"><Sparkles size={14}/> {billing.discountLabel}</span>
                                     <span>-${billing.discount}</span>
                                 </div>
                             )}
                             <div className="flex justify-between text-sm text-gray-400 font-medium">
-                                <span className="flex items-center gap-1 underline decoration-dotted underline-offset-4">Tarifa Renty (10%) <Info size={12}/></span>
+                                <span className="flex items-center gap-1 underline underline-offset-4 decoration-dotted">Tarifa Renty (10%) <Info size={12}/></span>
                                 <span>+${billing.platformFee.toFixed(0)}</span>
                             </div>
                             <div className="pt-4 border-t border-white font-serif font-bold text-3xl flex justify-between">
@@ -289,14 +287,14 @@ export default function SpaceDetailsPage() {
                         </div>
                     )}
 
-                    <button onClick={handleBooking} disabled={bookingLoading || !billing} className="w-full bg-black text-white py-5 rounded-[24px] font-bold text-xl disabled:opacity-20 hover:scale-[1.02] active:scale-95 transition-all shadow-2xl flex items-center justify-center gap-3">
+                    <button onClick={handleBooking} disabled={bookingLoading || !billing} className="w-full bg-black text-white py-5 font-bold text-xl disabled:opacity-20 hover:scale-105 active:scale-95 transition-all shadow-2xl flex items-center justify-center gap-3" style={{ borderRadius: '24px' }}>
                         {bookingLoading ? <Loader2 className="animate-spin" /> : 'Reservar Espacio'}
                     </button>
 
                     <div className="mt-8 space-y-4 border-t border-gray-50 pt-6">
                         <div className="flex items-start gap-4 text-xs text-gray-500">
                             <div className="p-2 bg-green-50 rounded-lg text-green-600"><Shield size={16}/></div>
-                            <p className="leading-tight"><strong className="text-black">Protección Renty:</strong> Si lo que encontrás no es lo que viste, te devolvemos el dinero.</p>
+                            <p className="leading-tight"><strong className="text-black">Protección Renty:</strong> Pago seguro y reembolsos garantizados.</p>
                         </div>
                     </div>
                 </div>
@@ -304,22 +302,34 @@ export default function SpaceDetailsPage() {
         </div>
       </main>
 
-      {/* CHAT MODAL MEJORADO */}
       {showChatModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-lg rounded-[48px] overflow-hidden shadow-2xl">
-                <div className="bg-black p-10 text-white flex justify-between items-start">
-                    <div className="space-y-1">
-                        <h3 className="text-3xl font-serif font-bold">Enviar Consulta</h3>
-                        <p className="text-gray-400 text-sm">Estás hablando con {space.profiles?.full_name}</p>
+        <div className="fixed inset-0 bg-white bg-opacity-40 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-all">
+            <div className="bg-white w-full max-w-lg shadow-2xl border border-gray-100 overflow-hidden" style={{ borderRadius: '48px' }}>
+                <div className="p-10 flex justify-between items-start">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center font-serif italic text-xl">{space.profiles?.full_name?.[0]}</div>
+                            <div>
+                                <h3 className="text-2xl font-serif font-bold text-black">Contactar a {space.profiles?.full_name?.split(' ')[0]}</h3>
+                                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Consultá disponibilidad o detalles</p>
+                            </div>
+                        </div>
                     </div>
-                    <button onClick={() => setShowChatModal(false)} className="bg-white/10 p-3 rounded-full hover:bg-white/20 transition"><X size={24}/></button>
+                    <button onClick={() => setShowChatModal(false)} className="bg-gray-100 p-3 rounded-full hover:bg-gray-200 transition text-gray-500"><X size={20}/></button>
                 </div>
-                <div className="p-10 space-y-6">
-                    <textarea autoFocus value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} placeholder="Hola! Me gustaría saber si..." className="w-full bg-gray-50 border-2 border-gray-100 rounded-[32px] p-6 text-base min-h-[200px] outline-none focus:border-black transition-all text-black resize-none" />
-                    <button onClick={handleSendQuickMessage} disabled={sendingMsg || !chatMessage.trim()} className="w-full bg-black text-white py-6 rounded-3xl font-bold text-lg flex items-center justify-center gap-3 hover:bg-zinc-800 transition shadow-xl">
-                        {sendingMsg ? <Loader2 className="animate-spin" size={24}/> : <><Send size={20}/> Enviar mensaje directo</>}
-                    </button>
+                <div className="px-10 pb-10 space-y-6">
+                    <textarea 
+                        autoFocus 
+                        value={chatMessage} 
+                        onChange={(e) => setChatMessage(e.target.value)} 
+                        placeholder="Hola! Me interesa este espacio para..." 
+                        className="w-full bg-gray-50 border-2 border-transparent focus:border-black rounded-3xl p-6 text-lg min-h-48 outline-none transition-all text-black resize-none" 
+                    />
+                    <div className="flex items-center gap-4">
+                        <button onClick={handleSendQuickMessage} disabled={sendingMsg || !chatMessage.trim()} className="flex-1 bg-black text-white py-5 font-bold text-lg flex items-center justify-center gap-3 hover:shadow-xl transition-all active:scale-95 disabled:opacity-30" style={{ borderRadius: '24px' }}>
+                            {sendingMsg ? <Loader2 className="animate-spin" size={24}/> : <><Send size={20}/> Enviar mensaje</>}
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

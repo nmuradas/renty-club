@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-const config = {
+export default {
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -7,26 +7,28 @@ const config = {
   ],
   theme: {
     extend: {
-      colors: {
-        brand: 'var(--color-brand)',
-        secondary: 'var(--color-secondary)',
-        bg: 'var(--color-bg)',
-        surface: 'var(--color-surface)',
-        border: 'var(--color-border)',
-        dark: 'var(--color-dark)',
-      },
       fontFamily: {
+        // Conectamos con tu Plus Jakarta Sans
         sans: ['var(--font-jakarta)', 'sans-serif'],
+        // Conectamos con tu Playfair Display
         serif: ['var(--font-playfair)', 'serif'],
       },
-      boxShadow: {
-        'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
-        'card': '0 2px 8px rgba(0,0,0,0.04)',
-        'hover': '0 10px 25px -5px rgba(0, 0, 0, 0.05)'
+      colors: {
+        black: '#0a0a0a',
+        gray: {
+          50: '#fafafa',
+          100: '#f4f4f5',
+          200: '#e4e4e7',
+          300: '#d4d4d8',
+          400: '#a1a1aa',
+          500: '#71717a',
+          600: '#52525b',
+          700: '#3f3f46',
+          800: '#27272a',
+          900: '#18181b',
+        }
       }
     },
   },
   plugins: [],
 };
-
-export default config;

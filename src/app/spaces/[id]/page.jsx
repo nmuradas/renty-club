@@ -1,16 +1,16 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import dynamic from 'next/dynamic'
 import { 
-  MapPin, Star, Share2, Heart, Loader2, 
-  ArrowLeft, CheckCircle, Wifi, Shield, 
-  Wind, Zap, Coffee, Car, Accessibility, 
-  Utensils, User, Calendar, MessageCircle, Info, X, Send, Maximize,
-  Award, Clock, Sparkles
+  Star, Share2, Heart, Loader2, ArrowLeft, 
+  CheckCircle, Shield, Maximize, Clock, 
+  AlertCircle, MapPin, Check, X, Calendar as CalendarIcon, 
+  MessageCircle, Briefcase, User, Mail, Phone, FileText, Send,
+  ChevronLeft, ChevronRight 
 } from 'lucide-react'
 
 import flatpickr from 'flatpickr'
@@ -19,23 +19,21 @@ import { Spanish } from 'flatpickr/dist/l10n/es.js'
 
 const DashboardMap = dynamic(() => import('@/components/DashboardMap'), { 
   ssr: false,
-  loading: () => <div className="w-full bg-gray-100 animate-pulse rounded-3xl" style={{ height: '350px' }}></div>
+  loading: () => <div className="bg-gray-50 animate-pulse" style={{ height: '400px', borderRadius: '16px' }}></div>
 })
 
-const AMENITY_ICONS = {
-  "WiFi": Wifi, "Seguridad 24hs": Shield, "Aire Acondicionado": Wind,
-  "Calefacción": Zap, "Cocina": Utensils, "Baño privado": Accessibility,
-  "Cochera": Car, "Vidriera": Maximize, "Probador": User
-}
-
-const AmenityItem = ({ name }) => {
-  const IconComponent = AMENITY_ICONS[name] || CheckCircle
+// ==========================================
+// COMPONENTE TOAST (Notificación Flotante)
+// ==========================================
+function Toast({ message, type = 'success', onClose }) {
+  if (!message) return null;
   return (
-    <div className="flex items-center gap-3 p-4 rounded-2xl border border-gray-100 bg-white hover:border-black transition-colors duration-300 shadow-sm">
-      <div className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center">
-        <IconComponent size={20} className="text-black" />
+    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-fade-in-up">
+      <div className={`flex items-center gap-3 px-6 py-4 shadow-2xl ${type === 'success' ? 'bg-black text-white' : 'bg-red-500 text-white'}`} style={{ borderRadius: '30px' }}>
+        {type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+        <span className="text-sm font-bold tracking-wide">{message}</span>
+        <button onClick={onClose} className="ml-4 opacity-50 hover:opacity-100 transition cursor-pointer"><X size={16} /></button>
       </div>
-      <span className="text-sm font-bold text-gray-800">{name}</span>
     </div>
   )
 }
@@ -47,13 +45,45 @@ export default function SpaceDetailsPage() {
 
   const [space, setSpace] = useState(null)
   const [loading, setLoading] = useState(true)
+  
   const [bookingDates, setBookingDates] = useState({ start: '', end: '' })
+
   const [bookingLoading, setBookingLoading] = useState(false)
   const [showChatModal, setShowChatModal] = useState(false)
+  const [showBookingModal, setShowBookingModal] = useState(false)
+  
+  const [showLightbox, setShowLightbox] = useState(false)
+  const [currentImgIdx, setCurrentImgIdx] = useState(0)
+
   const [chatMessage, setChatMessage] = useState('')
   const [sendingMsg, setSendingMsg] = useState(false)
+  const [toastConfig, setToastConfig] = useState({ show: false, message: '', type: 'success' })
+
+  const pickers = useRef({ start: null, end: null })
+
+  const [bookingForm, setBookingForm] = useState({
+    name: '', email: '', phone: '', business: '', use: ''
+  })
+
+  const showToast = (message, type = 'success') => {
+    setToastConfig({ show: true, message, type });
+    setTimeout(() => setToastConfig({ show: false, message: '', type: 'success' }), 4000);
+  }
+
+  useEffect(() => {
+    if (user) {
+      setBookingForm(prev => ({ ...prev, email: user.email || '' }))
+    }
+  }, [user])
 
   useEffect(() => { if (id) loadSpace() }, [id])
+
+  useEffect(() => {
+    return () => {
+      if (pickers.current.start) pickers.current.start.destroy()
+      if (pickers.current.end) pickers.current.end.destroy()
+    }
+  }, [])
 
   async function loadSpace() {
     const { data } = await supabase.from('spaces').select('*, profiles(id, full_name, email)').eq('id', id).single()
@@ -66,271 +96,311 @@ export default function SpaceDetailsPage() {
 
   async function loadBlockedDates(spaceId) {
     const { data } = await supabase.from('bookings').select('start_date, end_date').eq('space_id', spaceId).in('status', ['approved', 'blocked'])
-    const disableConfig = data?.map(b => ({ from: b.start_date, to: b.end_date })) || []
+    const disableConfig = data?.map(b => ({ 
+        from: new Date(b.start_date + 'T00:00:00'), 
+        to: new Date(b.end_date + 'T00:00:00') 
+    })) || []
 
-    const endPicker = flatpickr("#checkout-picker", {
-        locale: Spanish, dateFormat: "Y-m-d", disable: disableConfig, minDate: "today",
-        onChange: (selectedDates, dateStr) => setBookingDates(prev => ({ ...prev, end: dateStr }))
+    const commonConfig = {
+        locale: Spanish, dateFormat: "j M Y", disable: disableConfig, 
+        minDate: "today", altInput: false, allowInput: false
+    }
+
+    if (pickers.current.end) pickers.current.end.destroy()
+    if (pickers.current.start) pickers.current.start.destroy()
+
+    pickers.current.end = flatpickr("#checkout-picker", {
+        ...commonConfig,
+        onChange: (selectedDates) => {
+            if (selectedDates[0]) {
+              const isoDate = selectedDates[0].toLocaleDateString('sv-SE')
+              setBookingDates(prev => ({ ...prev, end: isoDate }))
+            }
+        }
     })
 
-    flatpickr("#checkin-picker", {
-        locale: Spanish, dateFormat: "Y-m-d", disable: disableConfig, minDate: "today",
-        onChange: (selectedDates, dateStr) => {
-            setBookingDates(prev => ({ ...prev, start: dateStr }))
-            endPicker.set("minDate", dateStr)
+    pickers.current.start = flatpickr("#checkin-picker", {
+        ...commonConfig,
+        onChange: (selectedDates) => {
+            if (selectedDates[0]) {
+              const isoDate = selectedDates[0].toLocaleDateString('sv-SE')
+              setBookingDates(prev => ({ ...prev, start: isoDate }))
+              if (pickers.current.end) {
+                  pickers.current.end.set("minDate", selectedDates[0])
+              }
+            }
         }
     })
   }
-
+  
   const billing = useMemo(() => {
     if (!bookingDates.start || !bookingDates.end || !space) return null
     const days = Math.ceil((new Date(bookingDates.end) - new Date(bookingDates.start)) / (1000 * 60 * 60 * 24)) + 1 
     if (days <= 0) return null
     const subtotal = days * space.price
     const discount = days >= 28 ? subtotal * 0.30 : days >= 7 ? subtotal * 0.15 : 0
-    const discountLabel = days >= 28 ? "Descuento mensual (30%)" : "Descuento semanal (15%)"
     const platformFee = (subtotal - discount) * 0.10
-    return { days, subtotal, discount, discountLabel, platformFee, total: (subtotal - discount) + platformFee }
+    return { days, subtotal, discount, platformFee, total: (subtotal - discount) + platformFee }
   }, [bookingDates, space])
 
-  const handleBooking = async () => {
+  const openBookingProcess = () => {
     if (!user) return router.push('/login')
+    setShowBookingModal(true)
+  }
+
+  const handleConfirmBooking = async () => {
+    if (!bookingForm.name || !bookingForm.phone || !bookingForm.email || !bookingForm.business || !bookingForm.use) {
+      showToast("Por favor completá todos los campos para presentarte al dueño.", "error")
+      return
+    }
+
     setBookingLoading(true)
-    const { error } = await supabase.from('bookings').insert({
-        space_id: space.id, renter_id: user.id, owner_id: space.owner_id,
-        start_date: bookingDates.start, end_date: bookingDates.end,
-        total_price: billing.total, status: 'pending'
-    })
-    if (!error) { alert('¡Solicitud enviada!'); router.push('/dashboard?tab=rentals') }
-    setBookingLoading(false)
+    
+    try {
+      const { error: bookingError } = await supabase.from('bookings').insert({
+          space_id: space.id, renter_id: user.id, owner_id: space.owner_id,
+          start_date: bookingDates.start, end_date: bookingDates.end,
+          total_price: billing.total, status: 'pending'
+      })
+      if (bookingError) throw bookingError
+
+      const pitchMessage = `¡Hola! He solicitado una reserva.\n\n👤 DATOS DE CONTACTO:\nNombre: ${bookingForm.name}\nEmail: ${bookingForm.email}\nTeléfono: ${bookingForm.phone}\n\n🏢 MI NEGOCIO:\n${bookingForm.business}\n\n🎯 ¿QUÉ HARÉ EN EL ESPACIO?\n${bookingForm.use}`
+
+      await supabase.from('messages').insert({
+        sender_id: user.id, receiver_id: space.owner_id, space_id: space.id, content: pitchMessage
+      })
+
+      setShowBookingModal(false)
+      showToast('¡Solicitud enviada al propietario!', 'success')
+      setTimeout(() => router.push('/dashboard?tab=rentals'), 2000)
+
+    } catch (error) {
+      showToast('Hubo un error al procesar tu solicitud', 'error')
+    } finally {
+      setBookingLoading(false)
+    }
   }
 
   const handleSendQuickMessage = async () => {
     if (!chatMessage.trim()) return
     setSendingMsg(true)
     const { error } = await supabase.from('messages').insert({ sender_id: user.id, receiver_id: space.owner_id, space_id: space.id, content: chatMessage })
-    if (!error) { setChatMessage(''); setShowChatModal(false); alert('Mensaje enviado') }
+    
+    if (error) {
+       showToast('Error al enviar el mensaje', 'error');
+    } else {
+       setChatMessage(''); setShowChatModal(false); showToast('¡Mensaje enviado!', 'success');
+    }
     setSendingMsg(false)
   }
 
-  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-black" size={40}/></div>
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumSignificantDigits: 3 }).format(price)
+  }
+
+  const nextImg = (e) => { e.stopPropagation(); setCurrentImgIdx((prev) => (prev + 1) % gallery.length) }
+  const prevImg = (e) => { e.stopPropagation(); setCurrentImgIdx((prev) => (prev - 1 + gallery.length) % gallery.length) }
+
+  if (loading) return <div className="h-screen flex items-center justify-center font-sans text-gray-400 uppercase tracking-widest text-xs">Cargando Espacio...</div>
   if (!space) return null
 
-  let gallery = []
-  if (space.image) gallery.push(space.image)
-  if (space.images && Array.isArray(space.images)) {
-      const extra = space.images.filter(img => img !== space.image)
-      gallery = [...gallery, ...extra]
-  }
-  gallery = [...new Set(gallery)].filter(Boolean)
+  let gallery = space.image ? [space.image] : []
+  if (space.images) gallery = [...new Set([...gallery, ...space.images])].filter(Boolean)
 
   return (
-    <div className="bg-gray-50 min-h-screen text-black pb-20">
-      <nav className="fixed top-0 w-full bg-white bg-opacity-80 backdrop-blur-xl z-50 border-b border-gray-100 h-20 flex items-center px-6 justify-between">
-        <button onClick={() => router.back()} className="flex items-center gap-2 font-bold hover:bg-gray-100 px-4 py-2 rounded-full transition text-black"><ArrowLeft size={20} /> Volver</button>
+    <div className="bg-white min-h-screen text-black font-sans selection:bg-black selection:text-white pb-32">
+      
+      {toastConfig.show && (
+        <Toast message={toastConfig.message} type={toastConfig.type} onClose={() => setToastConfig({ show: false, message: '' })} />
+      )}
+
+      {/* NAVBAR */}
+      <nav className="fixed top-0 w-full bg-white/90 backdrop-blur-md border-b border-gray-100 h-20 flex items-center px-6 md:px-12 justify-between transition-all" style={{ zIndex: 90 }}>
+        <button onClick={() => router.back()} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest hover:text-gray-500 transition cursor-pointer">
+            <ArrowLeft size={16} /> Volver a explorar
+        </button>
         <div className="flex gap-4">
-            <button className="p-2 hover:bg-gray-100 rounded-full transition"><Share2 size={20}/></button>
-            <button className="p-2 hover:bg-gray-100 rounded-full transition"><Heart size={20}/></button>
+            <button className="flex items-center gap-2 text-xs font-bold tracking-widest uppercase hover:bg-gray-50 px-4 py-2 transition cursor-pointer" style={{ borderRadius: '30px' }}><Share2 size={14}/> Compartir</button>
+            <button className="flex items-center gap-2 text-xs font-bold tracking-widest uppercase hover:bg-gray-50 px-4 py-2 transition cursor-pointer" style={{ borderRadius: '30px' }}><Heart size={14}/> Guardar</button>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 pt-28">
-        <div className="mb-8">
-            <h1 className="text-4xl md:text-6xl font-serif font-bold mb-4 tracking-tight">{space.title}</h1>
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-                <div className="flex items-center gap-1 bg-black text-white px-3 py-1.5 rounded-full font-bold shadow-sm">
-                  <Star size={14} fill="white"/> 4.96
-                </div>
-                <div className="flex items-center gap-1 bg-white border border-gray-200 px-3 py-1.5 rounded-full font-bold text-gray-600">
-                  <MapPin size={14}/> {space.location}
-                </div>
-                <div className="flex items-center gap-1 bg-white border border-gray-200 px-3 py-1.5 rounded-full font-bold text-gray-600 uppercase tracking-tighter">
-                  <Maximize size={14}/> {space.size} m²
-                </div>
-                <div className="flex items-center gap-1 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-full font-bold text-blue-600">
-                  <Sparkles size={14}/> {space.type}
-                </div>
-            </div>
-        </div>
+      <main className="w-full mx-auto px-6 md:px-12 lg:px-24 pt-32" style={{ maxWidth: '1600px' }}>
         
-        <div className="overflow-hidden mb-16 relative shadow-2xl border-8 border-white bg-white" style={{ height: '550px', borderRadius: '40px' }}>
-            {gallery.length === 1 ? (
-                <img src={gallery[0]} className="w-full h-full object-cover" />
-            ) : gallery.length === 2 ? (
-                <div className="grid grid-cols-2 gap-2 h-full">
-                    <img src={gallery[0]} className="w-full h-full object-cover" />
-                    <img src={gallery[1]} className="w-full h-full object-cover" />
-                </div>
-            ) : (
-                <div className="grid grid-cols-4 grid-rows-2 gap-2 h-full">
-                    <div className="col-span-2 row-span-2"><img src={gallery[0]} className="w-full h-full object-cover" /></div>
-                    <div className="col-span-1 row-span-1"><img src={gallery[1]} className="w-full h-full object-cover" /></div>
-                    <div className="col-span-1 row-span-1"><img src={gallery[2]} className="w-full h-full object-cover" /></div>
-                    <div className="col-span-1 row-span-1"><img src={gallery[3] || gallery[0]} className="w-full h-full object-cover" /></div>
-                    <div className="col-span-1 row-span-1 relative">
-                        <img src={gallery[4] || gallery[0]} className="w-full h-full object-cover" />
-                        {gallery.length > 5 && <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center text-white font-bold cursor-pointer">+{gallery.length - 5} fotos</div>}
-                    </div>
-                </div>
-            )}
+        {/* ENCABEZADO */}
+        <header className="mb-10">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold mb-4 tracking-tight text-black">{space.title}</h1>
+            <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-black">
+                <span className="flex items-center gap-1 font-bold"><Star size={16} fill="black"/> 4.96</span>
+                <span className="text-gray-300">•</span>
+                <span className="flex items-center gap-1 text-gray-600 underline cursor-pointer hover:text-black transition"><MapPin size={14}/> {space.location}</span>
+                <span className="text-gray-300">•</span>
+                <span className="bg-gray-50 border border-gray-200 px-3 py-1 text-xs font-bold uppercase tracking-widest" style={{ borderRadius: '8px' }}>{space.type}</span>
+            </div>
+        </header>
+
+        {/* GALERÍA */}
+        <div 
+          className="mb-16 relative overflow-hidden group cursor-pointer" 
+          style={{ height: '65vh', minHeight: '450px', borderRadius: '24px' }}
+          onClick={() => setShowLightbox(true)}
+        >
+            <img src={gallery[0]} className="w-full h-full object-cover group-hover:scale-105 transition duration-1000" alt="Espacio" />
+            <button className="absolute bottom-8 right-8 bg-white text-black px-6 py-4 font-bold text-xs uppercase tracking-widest shadow-2xl flex items-center gap-3 hover:scale-105 transition active:scale-95" style={{ borderRadius: '40px' }}>
+                <Maximize size={16} /> Ver todas las fotos
+            </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-16">
-            <div className="md:col-span-2 space-y-16">
-                
-                <div className="flex justify-between items-start border-b border-gray-100 pb-10">
-                    <div className="space-y-4">
-                        <h2 className="text-2xl font-serif font-bold">Anfitrión: {space.profiles?.full_name}</h2>
-                        <div className="flex gap-4">
-                            <div className="flex items-center gap-1 text-xs font-bold text-gray-500 uppercase"><Clock size={14}/> Responde en 1h</div>
-                            <div className="flex items-center gap-1 text-xs font-bold text-gray-500 uppercase"><Award size={14}/> Top Anfitrión</div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 relative">
+            <div className="lg:col-span-8 space-y-16">
+                <section className="flex justify-between items-center pb-12 border-b border-gray-100">
+                    <div>
+                        <h2 className="text-3xl font-serif font-bold mb-3">Anfitrión: {space.profiles?.full_name}</h2>
+                        <div className="flex items-center gap-6 text-sm text-gray-500 font-light">
+                            <span className="flex items-center gap-2"><Maximize size={18} className="text-gray-300"/> {space.size} m²</span>
+                            <span className="flex items-center gap-2"><Briefcase size={18} className="text-gray-300"/> Ideal para eventos</span>
+                            <span className="flex items-center gap-2"><Clock size={18} className="text-gray-300"/> Flexible</span>
                         </div>
-                        <button onClick={() => user ? setShowChatModal(true) : router.push('/login')} className="flex items-center gap-2 text-sm font-bold bg-white border-2 border-black px-6 py-3 rounded-2xl hover:bg-black hover:text-white transition-all duration-300 shadow-md active:scale-95">
-                            <MessageCircle size={18} /> Hablar con el dueño
-                        </button>
                     </div>
-                    <div className="w-20 h-20 bg-gradient-to-tr from-gray-900 to-gray-600 text-white rounded-full flex items-center justify-center font-serif text-3xl italic shadow-xl border-4 border-white">
-                        {space.profiles?.full_name?.[0]}
+                    <div className="w-16 h-16 bg-black text-white rounded-full flex items-center justify-center font-serif text-2xl shadow-md uppercase">
+                        {space.profiles?.full_name ? space.profiles.full_name[0] : 'U'}
                     </div>
-                </div>
+                </section>
 
-                <div className="space-y-6">
-                    <h3 className="text-2xl font-serif font-bold flex items-center gap-3 underline underline-offset-8">Descripción</h3>
-                    <p className="text-gray-600 leading-relaxed text-lg whitespace-pre-wrap">{space.description}</p>
-                </div>
-
-                <div className="space-y-8">
-                    <h3 className="text-2xl font-serif font-bold flex items-center gap-3 underline underline-offset-8">Amenities</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        {(space.amenities || []).map(am => <AmenityItem key={am} name={am} />)}
+                <section className="grid grid-cols-1 md:grid-cols-2 gap-12 pb-16 border-b border-gray-100">
+                    <div className="space-y-4">
+                        <h3 className="text-xs font-bold tracking-widest uppercase text-gray-400 mb-6">El Espacio</h3>
+                        <p className="text-lg text-gray-700 leading-relaxed font-light whitespace-pre-line pr-4">{space.description}</p>
                     </div>
-                </div>
+                    <div>
+                        <h3 className="text-xs font-bold tracking-widest uppercase text-gray-400 mb-6">Equipamiento</h3>
+                        <div className="flex flex-col gap-4">
+                            {(space.amenities || []).map(am => (
+                                <div key={am} className="flex items-center gap-4 text-gray-700">
+                                    <Check size={20} className="text-gray-300" />
+                                    <span className="font-light text-lg">{am}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
 
-                <div className="space-y-8">
-                    <h3 className="text-2xl font-serif font-bold flex items-center gap-3 underline underline-offset-8">Ubicación exacta</h3>
-                    <p className="text-gray-500 font-bold mb-2 flex items-center gap-2 text-sm"><MapPin size={16}/> {space.location}</p>
-                    <div className="w-full overflow-hidden border-8 border-white shadow-2xl" style={{ height: '400px', borderRadius: '32px' }}>
+                <section className="space-y-6 pb-16 border-b border-gray-100">
+                    <h3 className="text-2xl font-serif font-bold">Ubicación</h3>
+                    <p className="text-gray-500 font-light">{space.location}</p>
+                    <div className="w-full overflow-hidden bg-gray-50 shadow-sm" style={{ height: '480px', borderRadius: '24px' }}>
                         <DashboardMap lat={space.lat} lng={space.lng} interactive={false} />
                     </div>
-                </div>
+                </section>
 
-                <div className="space-y-10 pt-10 border-t border-gray-100">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-2xl font-serif font-bold flex items-center gap-3 underline underline-offset-8"><Star fill="black" size={24}/> 4.96 · 12 Reseñas</h3>
-                        <button className="text-sm font-bold underline">Ver todas</button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <section className="space-y-12">
+                    <h3 className="text-3xl font-serif font-bold flex items-center gap-3"><Star fill="black" size={28}/> 4.96 · 12 Opiniones</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                         {[
-                            { name: "Carlos R.", date: "Hace 2 semanas", text: "Excelente luz natural para fotos. Muy recomendado.", color: "bg-blue-100 text-blue-600" },
-                            { name: "Sofía M.", date: "Hace 1 mes", text: "El anfitrión fue muy amable y el espacio estaba impecable.", color: "bg-pink-100 text-pink-600" }
+                            { name: "C. RUIZ", date: "ENERO 2024", text: "El espacio es minimalista y la luz es perfecta. El proceso de entrada fue muy ágil." },
+                            { name: "S. MOURA", date: "DICIEMBRE 2023", text: "Excelente ubicación para marcas que buscan visibilidad premium." }
                         ].map((rev, i) => (
-                            <div key={i} className="bg-white p-8 border border-gray-100 shadow-sm hover:shadow-xl transition-shadow duration-300" style={{ borderRadius: '32px' }}>
-                                <div className="flex items-center gap-4 mb-4">
-                                    <div className={`w-12 h-12 ${rev.color} rounded-full flex items-center justify-center font-bold shadow-inner text-xl font-serif italic`}>{rev.name[0]}</div>
-                                    <div><p className="font-bold text-black">{rev.name}</p><p className="text-xs text-gray-400 font-bold uppercase">{rev.date}</p></div>
+                            <div key={i} className="space-y-4 p-6 bg-gray-50 border border-gray-100" style={{ borderRadius: '16px' }}>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center font-bold text-xs shadow-sm uppercase">{rev.name[0]}</div>
+                                    <div><p className="font-bold text-sm text-black">{rev.name}</p><p className="font-bold text-gray-400" style={{ fontSize: '10px' }}>{rev.date}</p></div>
                                 </div>
-                                <div className="flex text-yellow-400 mb-3"><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/><Star size={12} fill="currentColor"/></div>
-                                <p className="text-gray-600 text-sm leading-relaxed italic">"{rev.text}"</p>
+                                <p className="text-gray-600 text-sm italic font-light leading-relaxed">"{rev.text}"</p>
                             </div>
                         ))}
                     </div>
-                </div>
+                </section>
             </div>
 
-            <div className="relative">
-                <div className="sticky top-28 bg-white border border-gray-100 shadow-2xl p-8 text-black" style={{ borderRadius: '40px' }}>
-                    <div className="flex justify-between items-center mb-8">
-                      <div>
-                        <p className="text-3xl font-serif font-bold">${space.price}</p>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">por día</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 font-bold text-sm bg-gray-50 px-3 py-1 rounded-full"><Star size={12} fill="black"/> 4.9</div>
-                      </div>
+            {/* COLUMNA DERECHA - ORDEN CORREGIDO */}
+            <div className="lg:col-span-4 relative">
+                <div className="sticky top-28 space-y-4">
+                    <div className="bg-white border border-gray-200 p-8 shadow-2xl" style={{ borderRadius: '24px' }}>
+                        <div className="flex items-baseline gap-2 mb-8">
+                            <span className="text-3xl font-serif font-bold">{formatPrice(space.price)}</span>
+                            <span className="text-sm text-gray-500 font-light">/ día</span>
+                        </div>
+                        <div className="border border-gray-300 mb-6 flex overflow-hidden cursor-pointer" style={{ borderRadius: '12px' }}>
+                            <div className="w-1/2 p-3 border-r border-gray-300 hover:bg-gray-50 transition">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-black block mb-1">Llegada</label>
+                                <input id="checkin-picker" placeholder="Añadir fecha" className="w-full text-sm font-bold outline-none bg-transparent cursor-pointer text-gray-700" readOnly />
+                            </div>
+                            <div className="w-1/2 p-3 hover:bg-gray-50 transition">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-black block mb-1">Salida</label>
+                                <input id="checkout-picker" placeholder="Añadir fecha" className="w-full text-sm font-bold outline-none bg-transparent cursor-pointer text-gray-700" readOnly />
+                            </div>
+                        </div>
+
+                        {/* DESGLOSE AHORA ARRIBA DEL BOTÓN */}
+                        {billing && (
+                            <div className="mb-6 space-y-4 animate-fade-in">
+                                <div className="flex justify-between text-gray-600 text-sm font-light"><span className="underline">Alquiler x {billing.days} días</span><span>{formatPrice(billing.subtotal)}</span></div>
+                                {billing.discount > 0 && <div className="flex justify-between text-green-600 font-medium text-sm bg-green-50 p-2 rounded-md"><span>Descuento</span><span>-{formatPrice(billing.discount)}</span></div>}
+                                <div className="flex justify-between text-gray-600 text-sm font-light border-b border-gray-100 pb-4"><span className="underline">Tarifa por servicio</span><span>{formatPrice(billing.platformFee)}</span></div>
+                                <div className="pt-2 font-bold text-xl flex justify-between text-black"><span>Total</span><span>{formatPrice(billing.total)}</span></div>
+                            </div>
+                        )}
+
+                        <button onClick={openBookingProcess} disabled={!billing} className="w-full text-white py-4 font-bold text-sm tracking-wide transition shadow-lg active:scale-95 cursor-pointer disabled:opacity-30 rounded-xl" style={{ background: 'linear-gradient(to right, #000000, #333333)' }}>Solicitar Reserva</button>
+                        <p className="text-center text-xs text-gray-400 mt-4 font-light">No se te cobrará nada aún</p>
                     </div>
-                    
-                    <div className="grid grid-cols-2 border-2 border-gray-50 rounded-3xl mb-6 overflow-hidden bg-gray-50">
-                        <div className="p-4 border-r border-white hover:bg-white transition-all cursor-pointer">
-                            <label className="text-xs font-bold text-gray-400 block uppercase mb-1" style={{ fontSize: '10px' }}>Entrada</label>
-                            <input id="checkin-picker" placeholder="Añadir" className="w-full text-sm font-bold outline-none bg-transparent" readOnly />
-                        </div>
-                        <div className="p-4 hover:bg-white transition-all cursor-pointer">
-                            <label className="text-xs font-bold text-gray-400 block uppercase mb-1" style={{ fontSize: '10px' }}>Salida</label>
-                            <input id="checkout-picker" placeholder="Añadir" className="w-full text-sm font-bold outline-none bg-transparent" readOnly />
-                        </div>
-                    </div>
 
-                    {billing ? (
-                        <div className="space-y-4 mb-8 bg-gray-50 p-6 rounded-3xl">
-                            <div className="flex justify-between text-sm font-medium">
-                                <span className="text-gray-500 underline underline-offset-4 decoration-dotted">${space.price} x {billing.days} días</span>
-                                <span className="font-bold">${billing.subtotal}</span>
-                            </div>
-                            {billing.discount > 0 && (
-                                <div className="flex justify-between text-sm text-green-600 font-bold bg-green-50 px-3 py-2 rounded-xl border border-green-100">
-                                    <span className="flex items-center gap-1"><Sparkles size={14}/> {billing.discountLabel}</span>
-                                    <span>-${billing.discount}</span>
-                                </div>
-                            )}
-                            <div className="flex justify-between text-sm text-gray-400 font-medium">
-                                <span className="flex items-center gap-1 underline underline-offset-4 decoration-dotted">Tarifa Renty (10%) <Info size={12}/></span>
-                                <span>+${billing.platformFee.toFixed(0)}</span>
-                            </div>
-                            <div className="pt-4 border-t border-white font-serif font-bold text-3xl flex justify-between">
-                                <span>Total</span>
-                                <span>${billing.total.toFixed(0)}</span>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="mb-8 p-6 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200 text-center">
-                             <p className="text-sm text-gray-400 font-medium leading-relaxed italic">Elegí las fechas para ver el presupuesto final.</p>
-                        </div>
-                    )}
-
-                    <button onClick={handleBooking} disabled={bookingLoading || !billing} className="w-full bg-black text-white py-5 font-bold text-xl disabled:opacity-20 hover:scale-105 active:scale-95 transition-all shadow-2xl flex items-center justify-center gap-3" style={{ borderRadius: '24px' }}>
-                        {bookingLoading ? <Loader2 className="animate-spin" /> : 'Reservar Espacio'}
-                    </button>
-
-                    <div className="mt-8 space-y-4 border-t border-gray-50 pt-6">
-                        <div className="flex items-start gap-4 text-xs text-gray-500">
-                            <div className="p-2 bg-green-50 rounded-lg text-green-600"><Shield size={16}/></div>
-                            <p className="leading-tight"><strong className="text-black">Protección Renty:</strong> Pago seguro y reembolsos garantizados.</p>
-                        </div>
+                    <div className="bg-gray-50 border border-gray-100 p-6 shadow-sm flex flex-col items-center gap-3" style={{ borderRadius: '24px' }}>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">¿Tienes alguna duda?</p>
+                        <button onClick={() => user ? setShowChatModal(true) : router.push('/login')} className="w-full flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-black hover:bg-white transition cursor-pointer p-4 border border-black rounded-xl"><MessageCircle size={16} /> Consultar al anfitrión</button>
                     </div>
                 </div>
             </div>
         </div>
       </main>
 
-      {showChatModal && (
-        <div className="fixed inset-0 bg-white bg-opacity-40 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-all">
-            <div className="bg-white w-full max-w-lg shadow-2xl border border-gray-100 overflow-hidden" style={{ borderRadius: '48px' }}>
-                <div className="p-10 flex justify-between items-start">
+      {/* LIGHTBOX */}
+      {showLightbox && (
+        <div className="fixed inset-0 bg-black z-200 flex items-center justify-center select-none animate-fade-in" onClick={() => setShowLightbox(false)}>
+            <button onClick={() => setShowLightbox(false)} className="absolute top-8 right-8 text-white/50 hover:text-white transition z-210 cursor-pointer"><X size={40}/></button>
+            <button onClick={prevImg} className="absolute left-8 text-white/50 hover:text-white transition cursor-pointer p-4 z-210"><ChevronLeft size={48}/></button>
+            <div className="relative max-w-[90vw] max-h-[85vh] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+              <img src={gallery[currentImgIdx]} className="max-w-full max-h-[85vh] object-contain shadow-2xl" alt="Ampliación" />
+            </div>
+            <button onClick={nextImg} className="absolute right-8 text-white/50 hover:text-white transition cursor-pointer p-4 z-210"><ChevronRight size={48}/></button>
+            <div className="absolute bottom-8 text-white/60 font-bold tracking-widest text-xs uppercase">{currentImgIdx + 1} / {gallery.length}</div>
+        </div>
+      )}
+
+      {/* MODAL DE RESERVA - EMAIL AGREGADO */}
+      {showBookingModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-100">
+            <div className="bg-white w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col rounded-24px" style={{ maxHeight: '90vh' }}>
+                <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <h3 className="text-2xl font-serif font-bold text-black">Solicitud de Reserva</h3>
+                    <button onClick={() => setShowBookingModal(false)} className="text-gray-400 hover:text-black transition cursor-pointer"><X size={24}/></button>
+                </div>
+                <div className="p-8 space-y-6 overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2"><label className="text-xs font-bold uppercase text-gray-400">Nombre completo</label><input type="text" value={bookingForm.name} onChange={e=>setBookingForm({...bookingForm, name: e.target.value})} className="w-full border border-gray-200 p-3 rounded-xl outline-none focus:border-black transition" /></div>
+                      <div className="space-y-2"><label className="text-xs font-bold uppercase text-gray-400">Teléfono</label><input type="tel" value={bookingForm.phone} onChange={e=>setBookingForm({...bookingForm, phone: e.target.value})} className="w-full border border-gray-200 p-3 rounded-xl outline-none focus:border-black transition" /></div>
+                    </div>
+                    
+                    {/* CAMPO DE EMAIL AGREGADO */}
                     <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center font-serif italic text-xl">{space.profiles?.full_name?.[0]}</div>
-                            <div>
-                                <h3 className="text-2xl font-serif font-bold text-black">Contactar a {space.profiles?.full_name?.split(' ')[0]}</h3>
-                                <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Consultá disponibilidad o detalles</p>
-                            </div>
-                        </div>
+                        <label className="text-xs font-bold uppercase text-gray-400">Email</label>
+                        <input type="email" value={bookingForm.email} onChange={e=>setBookingForm({...bookingForm, email: e.target.value})} className="w-full border border-gray-200 p-3 rounded-xl outline-none focus:border-black transition" placeholder="tu@email.com"/>
                     </div>
-                    <button onClick={() => setShowChatModal(false)} className="bg-gray-100 p-3 rounded-full hover:bg-gray-200 transition text-gray-500"><X size={20}/></button>
+
+                    <div className="space-y-2"><label className="text-xs font-bold uppercase text-gray-400">Sobre tu marca</label><textarea value={bookingForm.business} onChange={e=>setBookingForm({...bookingForm, business: e.target.value})} className="w-full border border-gray-200 p-3 rounded-xl min-h-80px outline-none focus:border-black transition resize-none" /></div>
+                    <div className="space-y-2"><label className="text-xs font-bold uppercase text-gray-400">¿Qué harás en el espacio?</label><textarea value={bookingForm.use} onChange={e=>setBookingForm({...bookingForm, use: e.target.value})} className="w-full border border-gray-200 p-3 rounded-xl min-h-80px outline-none focus:border-black transition resize-none" /></div>
                 </div>
-                <div className="px-10 pb-10 space-y-6">
-                    <textarea 
-                        autoFocus 
-                        value={chatMessage} 
-                        onChange={(e) => setChatMessage(e.target.value)} 
-                        placeholder="Hola! Me interesa este espacio para..." 
-                        className="w-full bg-gray-50 border-2 border-transparent focus:border-black rounded-3xl p-6 text-lg min-h-48 outline-none transition-all text-black resize-none" 
-                    />
-                    <div className="flex items-center gap-4">
-                        <button onClick={handleSendQuickMessage} disabled={sendingMsg || !chatMessage.trim()} className="flex-1 bg-black text-white py-5 font-bold text-lg flex items-center justify-center gap-3 hover:shadow-xl transition-all active:scale-95 disabled:opacity-30" style={{ borderRadius: '24px' }}>
-                            {sendingMsg ? <Loader2 className="animate-spin" size={24}/> : <><Send size={20}/> Enviar mensaje</>}
-                        </button>
-                    </div>
-                </div>
+                <div className="p-8 border-t border-gray-100 bg-white"><button onClick={handleConfirmBooking} disabled={bookingLoading} className="w-full bg-black text-white py-5 font-bold uppercase transition rounded-xl flex justify-center items-center gap-2">{bookingLoading ? <Loader2 className="animate-spin" size={20} /> : <Send size={18} />} Enviar Solicitud</button></div>
+            </div>
+        </div>
+      )}
+
+      {/* MODAL DE CHAT */}
+      {showChatModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-100">
+            <div className="bg-white w-full max-w-lg shadow-2xl overflow-hidden rounded-24px">
+                <div className="p-8 flex justify-between items-center border-b border-gray-100 bg-gray-50"><h3 className="text-xl font-serif font-bold text-black">Contactar al anfitrión</h3><button onClick={() => setShowChatModal(false)} className="text-gray-400 hover:text-black cursor-pointer rounded-full p-2 border border-gray-200 bg-white"><X size={16}/></button></div>
+                <div className="p-8 space-y-6"><textarea autoFocus value={chatMessage} onChange={(e) => setChatMessage(e.target.value)} placeholder="Escribe aquí..." className="w-full border border-gray-200 p-4 rounded-2xl min-h-150px outline-none focus:border-black transition resize-none" /><button onClick={handleSendQuickMessage} disabled={sendingMsg || !chatMessage.trim()} className="w-full bg-black text-white py-4 font-bold uppercase rounded-xl flex justify-center items-center gap-2">{sendingMsg ? <Loader2 className="animate-spin" size={18}/> : <MessageCircle size={18} />} Enviar Mensaje</button></div>
             </div>
         </div>
       )}

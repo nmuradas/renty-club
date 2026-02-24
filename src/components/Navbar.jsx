@@ -77,7 +77,7 @@ export default function Navbar() {
         {/* NAVEGACIÓN CENTRAL */}
         <div className="hidden md:flex items-center gap-4 absolute left-1/2 transform -translate-x-1/2">
             <Link 
-              href="/" 
+              href="/spaces" 
               className={`text-sm font-bold px-5 py-2.5 rounded-full transition-all duration-200 ${
                 isSpacesActive 
                 ? 'bg-gray-100 border border-gray-200 text-black' 
@@ -112,7 +112,7 @@ export default function Navbar() {
             <div className="relative" ref={menuRef}>
                 <button 
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    className="flex items-center gap-3 border border-gray-200 rounded-full pl-3 pr-1 py-1 hover:shadow-md transition bg-white"
+                    className="flex items-center gap-3 border border-gray-200 rounded-full pl-3 pr-1 py-1 hover:shadow-md transition bg-white cursor-pointer"
                 >
                     <Menu size={18} className="text-black ml-1"/>
                     <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden border border-gray-100">
